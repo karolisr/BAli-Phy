@@ -28,6 +28,13 @@ using std::set;
 using std::deque;
 using std::pair;
 
+std::string failable_expression::print() const
+{
+    std::string out = "failable(FAIL){can_fail=";
+    out += (can_fail)?"true":"false";
+    out += "," + convertToString(result(var("FAIL")))+"}";
+    return out;
+}
 //  -----Prelude: http://www.haskell.org/onlinereport/standard-prelude.html
 
 // See list in computation/loader.C
@@ -57,20 +64,16 @@ bool is_irrefutable_pat(const expression_ref& E)
     return E.head().is_a<var>();
 }
 
-vector<expression_ref> get_patterns(const expression_ref& decl)
+vector<expression_ref> get_patterns(const Haskell::ValueDecl& decl)
 {
-    assert(is_AST(decl,"Decl"));
+    assert(decl.lhs.head().is_a<var>());
 
-    expression_ref lhs = decl.sub()[0];
-    assert(lhs.head().is_a<var>());
-
-    return lhs.sub();
+    return decl.lhs.sub();
 }
 
-failable_expression get_body(const expression_ref& decl)
+failable_expression get_body(const Haskell::ValueDecl& decl)
 {
-    auto& rhs = decl.sub()[1];
-    return rhs.as_<failable_expression>();
+    return decl.rhs.as_<failable_expression>();
 }
 
 
@@ -123,21 +126,22 @@ vector<expression_ref> desugar_state::parse_fundecls(const vector<expression_ref
 	auto& decl = v[i];
 
 	// This is a declaration, but not a type we're handling here.
-	if (not is_AST(decl,"Decl"))
+	if (not decl.is_a<Haskell::ValueDecl>())
 	{
 	    decls.push_back( decl );
 	    continue;
 	}
 
-	auto lhs = desugar(decl.sub()[0]);
-	auto& rhs = decl.sub()[1];
-	auto& rhs_fail = rhs.as_<failable_expression>();
+        auto& Decl = decl.as_<Haskell::ValueDecl>();
+
+	auto lhs = desugar(Decl.lhs);
+	auto& rhs_fail = Decl.rhs.as_<failable_expression>();
 
         // If its just a variable with no args, don't call def_function because ... its complicated?
 	if (lhs.is_a<var>())
 	{
 	    assert(not rhs_fail.can_fail);
-	    decls.push_back(decl.head() + lhs + rhs_fail.result(0));
+	    decls.push_back(Haskell::ValueDecl(lhs, rhs_fail.result(0)));
 	    continue;
 	}
 
@@ -150,34 +154,34 @@ vector<expression_ref> desugar_state::parse_fundecls(const vector<expression_ref
 	    auto z = get_fresh_var();
 
 	    assert(not rhs_fail.can_fail);
-	    decls.push_back(decl.head()+z+rhs_fail.result(0));
+	    decls.push_back(Haskell::ValueDecl(z, rhs_fail.result(0)));
 	    // Probably we shouldn't have desugared the RHS yet. (?)
 	    for(auto& x: get_free_indices(pat))
-		decls.push_back(decl.head()+x+case_expression(z, {pat}, {failable_expression(x)}).result(error("pattern binding: failed pattern match")));
+		decls.push_back(Haskell::ValueDecl(x,case_expression(z, {pat}, {failable_expression(x)}).result(error("pattern binding: failed pattern match"))));
 	    continue;
 	}
 
 	auto fvar = f.as_<var>();
 
 	vector<equation_info_t> equations;
-	equations.push_back({ get_patterns(decl), get_body(decl) });
 
-	for(int j=i+1;j<v.size();j++)
+	for(int j=i;j<v.size();j++)
 	{
-	    if (not is_AST(v[j],"Decl")) break;
-	    auto& j_lhs = v[j].sub()[0];
-	    auto& j_f   = j_lhs.head();
-	    if (j_f.is_a<constructor>()) break;
+	    if (not v[j].is_a<Haskell::ValueDecl>()) break;
+            auto& jdecl = v[j].as_<Haskell::ValueDecl>();
 
-	    if (j_f.as_<var>() != fvar) break;
+	    auto& jdecl_f   = jdecl.lhs.head();
+	    if (jdecl_f.is_a<constructor>()) break;
 
-	    equations.push_back({ get_patterns(v[j]), get_body(v[j])});
+	    if (jdecl_f.as_<var>() != fvar) break;
+
+	    equations.push_back({ get_patterns(jdecl), get_body(jdecl)});
 
 	    if (equations.back().patterns.size() != equations.front().patterns.size())
 		throw myexception()<<"Function '"<<fvar<<"' has different numbers of arguments!";
 	}
 	auto otherwise = error(fvar.name+": pattern match failure");
-	decls.push_back(AST_node("Decl") + fvar + def_function(equations, otherwise) );
+	decls.push_back( Haskell::ValueDecl(fvar, def_function(equations, otherwise)) );
 
 	// skip the other bindings for this function
 	i += (equations.size()-1);
@@ -194,12 +198,9 @@ CDecls desugar_state::desugar_decls(const expression_ref& E)
     CDecls decls;
     for(const auto& decl: E2.sub())
     {
-	assert(is_AST(decl,"Decl"));
+        auto& Decl = decl.as_<Haskell::ValueDecl>();
 
-	var x = decl.sub()[0].as_<var>();
-	auto F = decl.sub()[1];
-
-	decls.push_back({x,F});
+	decls.push_back({Decl.lhs.as_<var>(), Decl.rhs});
     }
 
     return decls;
@@ -338,12 +339,12 @@ expression_ref desugar_state::desugar(const expression_ref& E)
                 expression_ref ok = get_fresh_var("ok");
                 expression_ref lhs1 = ok + p;
                 expression_ref rhs1 = Haskell::SimpleRHS(do_stmts);
-                expression_ref decl1 = AST_node("Decl") + lhs1 + rhs1;
+                expression_ref decl1 = Haskell::ValueDecl(lhs1,rhs1);
 
                 expression_ref fail = {var("Compiler.Base.fail"),"Fail!"};
                 expression_ref lhs2 = ok + var(-1);
                 expression_ref rhs2 = Haskell::SimpleRHS(fail);
-                expression_ref decl2 = AST_node("Decl") + lhs2 + rhs2;
+                expression_ref decl2 = Haskell::ValueDecl(lhs2, rhs2);
 
                 expression_ref decls = AST_node("Decls") + decl1 +  decl2;
 
@@ -362,6 +363,21 @@ expression_ref desugar_state::desugar(const expression_ref& E)
             std::abort();
 
         return desugar(result);
+    }
+    else if (E.is_a<Haskell::ValueDecl>())
+    {
+        auto D = E.as_<Haskell::ValueDecl>();
+        // FIXME: don't desugar a Decl except from Decls
+        // Pattern bindings should be processed before we get here!
+        //
+        // auto& lhs = E.sub()[0];
+        // assert(not lhs.head().is_a<constructor>());
+
+        D.lhs = desugar(D.lhs);        // Desugar list and tuple patterns to constructors.
+        if (D.type_sig)
+            D.type_sig = desugar(D.type_sig);
+        D.rhs = desugar_rhs(D.rhs);
+        return D;
     }
 
     vector<expression_ref> v = E.copy_sub();
@@ -382,23 +398,6 @@ expression_ref desugar_state::desugar(const expression_ref& E)
 
 	    return expression_ref{E.head(),decls};
 	}
-	else if (n.type == "Decl")
-	{
-
-            v[0] = desugar(v[0]);      // Desugar list and tuple patterns to constructors.
-	    v[1] = desugar_rhs(v[1]);
-            // FIXME: don't desugar a Decl except from Decls
-            // Pattern bindings should be processed before we get here!
-            //
-            // auto& lhs = E.sub()[0];
-            // assert(not lhs.head().is_a<constructor>());
-
-	    return expression_ref{E.head(),std::move(v)};
-	}
-	else if (n.type == "rhs")
-	    std::abort();
-	else if (n.type == "gdrhs")
-	    std::abort();
 	else if (n.type == "ListComprehension")
 	{
 	    expression_ref E2 = E;
@@ -441,11 +440,11 @@ expression_ref desugar_state::desugar(const expression_ref& E)
 			expression_ref ok = get_fresh_var("ok");
 			expression_ref lhs1 = ok + p;
 			expression_ref rhs1 = Haskell::SimpleRHS(E2);
-			expression_ref decl1 = AST_node("Decl") + lhs1 + rhs1;
+			expression_ref decl1 = Haskell::ValueDecl(lhs1,rhs1);
 
 			expression_ref lhs2 = ok + var(-1);
 			expression_ref rhs2 = Haskell::SimpleRHS(var("[]"));
-			expression_ref decl2 = AST_node("Decl") + lhs2 + rhs2;
+			expression_ref decl2 = Haskell::ValueDecl(lhs2, rhs2);
 
 			expression_ref decls = AST_node("Decls") + decl1 + decl2;
 			expression_ref body = {var("Data.List.concatMap"),ok,l};

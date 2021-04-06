@@ -188,6 +188,20 @@ std::string GuardedRHS::print() const
     return "| " + join(guard_string,", ") + " = " + body.print();
 }
 
+std::string DataOrNewtypeDecl::print() const
+{
+    string result = (data_or_newtype == DataOrNewtype::data) ? "data" : "newtype";
+    result += " " + name + " ";
+    for(auto& type_var: type_vars)
+        result += type_var.print() + " ";
+    result += "= ";
+    vector<string> cons;
+    for(auto& con: constructors)
+        cons.push_back(con.print());
+    result += join(cons, " | ");
+    return result;
+}
+
 std::string MultiGuardedRHS::print() const
 {
     string result = "= ";
@@ -219,6 +233,34 @@ std::pair<Type,std::vector<Type>> decompose_type_apps(Type t)
     std::reverse(args.begin(), args.end());
     return {t,args};
 }
-    
+
+string ValueDecl::print() const
+{
+    string result = lhs.print();
+    if (type_sig)
+        result += " :: " + type_sig.print();
+    result += " ";
+    if (not (rhs.is_a<SimpleRHS>() or rhs.is_a<MultiGuardedRHS>()))
+        result += "= ";
+    result += rhs.print();
+    return result;
+}
+
+bool ValueDecl::operator==(const Object& O) const
+{
+    if (this == &O) return true;
+
+    auto vd = dynamic_cast<const ValueDecl*>(&O);
+
+    if (vd)
+        return operator==(*vd);
+    else
+        return false;
+}
+
+bool ValueDecl::operator==(const ValueDecl& V) const
+{
+    return (lhs == V.lhs) and (type_sig == V.type_sig) and (rhs == V.rhs);
+}
 
 }

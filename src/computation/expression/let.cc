@@ -8,6 +8,7 @@
 #include "constructor.H"
 #include "computation/operations.H"
 #include "util/range.H" // for reverse( )
+#include "computation/parser/haskell.H"
 
 using std::vector;
 using std::set;
@@ -44,11 +45,8 @@ expression_ref make_decls(const CDecls& decls)
     object_ptr<expression> Decls = new expression(AST_node("Decls"));
     for(auto& decl: decls)
     {
-	object_ptr<expression> Decl = new expression(AST_node("Decl"));
-	Decl->sub.push_back(decl.first);
 	assert(decl.second);
-	Decl->sub.push_back(decl.second);
-	Decls->sub.push_back(Decl);
+        Decls->sub.push_back(Haskell::ValueDecl(decl.first, decl.second));
     }
     return Decls;
 }
@@ -61,11 +59,8 @@ expression_ref make_topdecls(const CDecls& decls)
     object_ptr<expression> Decls = new expression(AST_node("TopDecls"));
     for(auto& decl: decls)
     {
-	object_ptr<expression> Decl = new expression(AST_node("Decl"));
-	Decl->sub.push_back(decl.first);
 	assert(decl.second);
-	Decl->sub.push_back(decl.second);
-	Decls->sub.push_back(Decl);
+        Decls->sub.push_back(Haskell::ValueDecl(decl.first, decl.second));
     }
     return Decls;
 }
@@ -282,11 +277,11 @@ void get_decls(const expression_ref& E, CDecls& decls)
 
     assert(is_AST(E,"Decls") or is_AST(E,"TopDecls"));
     auto& Decls = E.sub();
-    for(int i=0;i<Decls.size();i++)
+    for(auto& decl: Decls)
     {
-	assert(is_AST(Decls[i],"Decl"));
-	auto& Decl = Decls[i].sub();
-	decls.push_back({Decl[0].as_<var>(), Decl[1]});
+	assert(decl.is_a<Haskell::ValueDecl>());
+	auto& Decl = decl.as_<Haskell::ValueDecl>();
+	decls.push_back({Decl.lhs.as_<var>(), Decl.rhs});
     }
 }
 

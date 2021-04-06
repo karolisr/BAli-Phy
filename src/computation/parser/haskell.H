@@ -170,6 +170,7 @@ struct DataOrNewtypeDecl: public Object
     std::vector<expression_ref> constructors;
 
     DataOrNewtypeDecl* clone() const { return new DataOrNewtypeDecl(*this);}
+    std::string print() const;
 
     DataOrNewtypeDecl(DataOrNewtype dn,
                       const std::string& s,
@@ -491,6 +492,22 @@ struct SimpleRHS: public Object
 
     SimpleRHS(const expression_ref& b): body(b) {}
     SimpleRHS(const expression_ref& b, const expression_ref& ds): body(b), decls(ds) {}
+};
+
+struct ValueDecl: public Object
+{
+    expression_ref lhs;
+    expression_ref type_sig;
+    expression_ref rhs;
+
+    bool operator==(const Object& O) const;
+    bool operator==(const ValueDecl& V) const;
+    ValueDecl* clone() const { return new ValueDecl(*this);}
+    std::string print() const;
+
+    ValueDecl() = default;
+    ValueDecl(const expression_ref& l, const expression_ref& r): lhs(l), rhs(r) {}
+    ValueDecl(const expression_ref& l, const expression_ref& s, const expression_ref& r): lhs(l), type_sig(s), rhs(r) {}
 };
 
 }

@@ -209,6 +209,16 @@ expression_ref reg_heap::translate_refs(const expression_ref& E, closure::Env_t&
 	return index_var(index);
     }
 
+    if (E.is_a<Haskell::ValueDecl>())
+    {
+        auto E2 = E.as_<Haskell::ValueDecl>();
+
+        E2.lhs = translate_refs(E2.lhs, Env);
+        E2.rhs = translate_refs(E2.rhs, Env);
+
+        return E2;
+    }
+
     // Other constants have no parts, and don't need to be translated
     if (not E.size()) return E;
 

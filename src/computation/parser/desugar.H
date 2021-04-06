@@ -19,7 +19,7 @@ struct failable_expression: public Object
 
     std::function<expression_ref(const expression_ref&)> result;
 
-    std::string print() const {return "("+std::to_string(can_fail)+","+convertToString(result(var("FAIL")))+")";}
+    std::string print() const;
 
     void add_binding(const CDecls& binds)
     {

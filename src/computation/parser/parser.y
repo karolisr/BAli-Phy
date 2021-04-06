@@ -1017,7 +1017,7 @@ decl_no_th: sigdecl           {$$ = $1;}
 /* I guess this is a strict let. Code as DeclStrict, rather than StrictPattern, since docs say this is part of the binding, not part of the patter */
 | "!" aexp rhs                {$$ = new expression(AST_node("Decl:Strict"),{($2),$3});}
 /* what is the opt_sig doing here? */
-| infixexp_top opt_sig rhs    {$$ = new expression(AST_node("Decl"),{make_infixexp($1),$3});}
+| infixexp_top opt_sig rhs    {$$ = Haskell::ValueDecl(make_infixexp($1), $2, $3);}
 /* | pattern_synonym_decl        {} */
 /* | docdel */
 

@@ -2685,7 +2685,7 @@ namespace yy {
 
   case 194: // decl_no_th: infixexp_top opt_sig rhs
 #line 1020 "parser.y"
-                              {yylhs.value.as < expression_ref > () = new expression(AST_node("Decl"),{make_infixexp(yystack_[2].value.as < std::vector<expression_ref> > ()),yystack_[0].value.as < expression_ref > ()});}
+                              {yylhs.value.as < expression_ref > () = Haskell::ValueDecl(make_infixexp(yystack_[2].value.as < std::vector<expression_ref> > ()), yystack_[1].value.as < expression_ref > (), yystack_[0].value.as < expression_ref > ());}
 #line 2690 "parser.cc"
     break;
 
