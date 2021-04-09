@@ -10,6 +10,7 @@
 class Module;
 
 expression_ref desugar(const Module& p, const expression_ref&);
+Haskell::Decls desugar(const Module& p, Haskell::Decls);
 
 struct failable_expression: public Object
 {
@@ -83,9 +84,9 @@ struct desugar_state: public fresh_vars
     void clean_up_pattern(const expression_ref& x, equation_info_t& eqn);
 
     expression_ref desugar(const expression_ref& E);
-    expression_ref desugar_decls(const expression_ref& E);
-    CDecls translate_decls_to_cdecls(const expression_ref& E);
-    CDecls desugar_decls_to_cdecls(const expression_ref& E);
+    Haskell::Decls desugar(Haskell::Decls);
+    CDecls translate_decls_to_cdecls(const Haskell::Decls&);
+    CDecls desugar_decls_to_cdecls(const Haskell::Decls&);
 
     desugar_state(const Module&);
 };

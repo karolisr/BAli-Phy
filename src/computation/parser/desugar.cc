@@ -31,25 +31,9 @@ using std::pair;
 //  -----Prelude: http://www.haskell.org/onlinereport/standard-prelude.html
 
 // See list in computation/loader.C
-//
-
-int max_index(const expression_ref& x)
-{
-    int index = -1;
-    if (x)
-    {
-	if (x.head().is_a<var>())
-	    index =  std::max(index,x.head().as_<var>().index);
-
-	if (x.size())
-	    for(auto& e: x.sub())
-		index = std::max(max_index(e),index);
-    }
-    return index;
-}
 
 desugar_state::desugar_state(const Module& m_)
-    :fresh_vars(1+max_index(m_.topdecls)), m(m_)
+    :fresh_vars(1), m(m_)
 {}
 
 bool is_irrefutable_pat(const expression_ref& E)
@@ -185,45 +169,40 @@ vector<expression_ref> desugar_state::parse_fundecls(const vector<expression_ref
     return decls;
 }
 
-CDecls desugar_state::translate_decls_to_cdecls(const expression_ref& E)
+CDecls desugar_state::translate_decls_to_cdecls(const Haskell::Decls& decls)
 {
-    assert(is_AST(E,"Decls"));
-
-    CDecls decls;
-    for(const auto& decl: E.sub())
+    CDecls cdecls;
+    for(const auto& decl: decls)
     {
 	assert(is_AST(decl,"Decl"));
 
 	var x = decl.sub()[0].as_<var>();
 	auto F = decl.sub()[1];
 
-	decls.push_back({x,F});
+	cdecls.push_back({x,F});
     }
 
-    return decls;
+    return cdecls;
 }
 
-expression_ref desugar_state::desugar_decls(const expression_ref& E)
+Haskell::Decls desugar_state::desugar(Haskell::Decls decls_in)
 {
-    assert(is_AST(E,"Decls") or is_AST(E,"TopDecls"));
-
-    vector<expression_ref> v = E.copy_sub();
-
     // translate each individual decl
-    for(auto& e: v)
-        e = desugar(e);
+    for(auto& decl_in: decls_in)
+        decl_in = desugar(decl_in);
 
     // Convert fundecls to normal decls
-    vector<expression_ref> decls = parse_fundecls(v);
+    vector<expression_ref> decls = parse_fundecls(decls_in);
 
-    return expression_ref{E.head(),decls};
+    if (decls_in.is_top_level())
+        return Haskell::TopDecls(decls);
+    else
+        return Haskell::Decls(decls);
 }
 
-CDecls desugar_state::desugar_decls_to_cdecls(const expression_ref& E)
+CDecls desugar_state::desugar_decls_to_cdecls(const Haskell::Decls& decls)
 {
-    assert(is_AST(E,"Decls"));
-
-    return translate_decls_to_cdecls(desugar(E));
+    return translate_decls_to_cdecls(desugar(decls));
 }
 
 failable_expression desugar_state::desugar_rhs(const expression_ref& E)
@@ -374,7 +353,7 @@ expression_ref desugar_state::desugar(const expression_ref& E)
                 expression_ref rhs2 = Haskell::SimpleRHS({noloc,fail});
                 expression_ref decl2 = AST_node("Decl") + lhs2 + rhs2;
 
-                expression_ref decls = AST_node("Decls") + decl1 +  decl2;
+                auto decls = Haskell::Decls({decl1,decl2});
 
                 expression_ref body = {qop,e,ok};
 
@@ -414,6 +393,8 @@ expression_ref desugar_state::desugar(const expression_ref& E)
         // construct the new let expression.
         return let_expression(decls, body);
     }
+    else if (E.is_a<Haskell::Decls>())
+        std::abort();
 
     vector<expression_ref> v = E.copy_sub();
 
@@ -422,8 +403,6 @@ expression_ref desugar_state::desugar(const expression_ref& E)
 	auto& n = E.head().as_<AST_node>();
 	if (n.type == "infixexp")
 	    std::abort();
-	else if (n.type == "Decls" or n.type == "TopDecls")
-            return desugar_decls(E);
 	else if (n.type == "Decl")
 	{
 
@@ -485,7 +464,7 @@ expression_ref desugar_state::desugar(const expression_ref& E)
 			expression_ref rhs2 = Haskell::SimpleRHS({noloc,var("[]")});
 			expression_ref decl2 = AST_node("Decl") + lhs2 + rhs2;
 
-			expression_ref decls = AST_node("Decls") + decl1 + decl2;
+			auto decls = Haskell::Decls({decl1, decl2});
 			expression_ref body = {var("Data.List.concatMap"),ok,l};
 
 			E2 = Haskell::LetExp( {noloc, decls}, {noloc, body} );
@@ -580,5 +559,11 @@ expression_ref desugar(const Module& m, const expression_ref& E)
 {
     desugar_state ds(m);
     return ds.desugar(E);
+}
+
+Haskell::Decls desugar(const Module& m, Haskell::Decls D)
+{
+    desugar_state ds(m);
+    return ds.desugar(D);
 }
 

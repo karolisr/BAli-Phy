@@ -55,10 +55,6 @@ CDecls let_decls(const expression_ref& E);
 
 CDecls parse_decls(const expression_ref& E);
 
-expression_ref make_decls(const CDecls&);
-
-expression_ref make_topdecls(const CDecls&);
-
 expression_ref let_body(const expression_ref& E);
 
 expression_ref multi_let_body(expression_ref E);

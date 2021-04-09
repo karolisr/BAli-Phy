@@ -97,6 +97,28 @@ struct Context
     Context(const std::vector<Haskell::Type>& cs): constraints(cs) {}
 };
 
+struct Decls: public std::vector<expression_ref>
+{
+protected:
+    bool is_top = false;
+public:
+    bool is_top_level() const {return is_top;}
+    
+    std::string print() const;
+
+    Decls() = default;
+    Decls(const vector<expression_ref>& ds): vector<expression_ref>(ds) {}
+};
+
+struct TopDecls: public Decls, public Object
+{
+    TopDecls* clone() const {return new TopDecls(*this);}
+    std::string print() const;
+    TopDecls() {is_top = true;}
+    TopDecls(const vector<expression_ref>& ds): Decls(ds) {is_top = true;}
+};
+
+    
 struct ClassDecl: public Object
 {
     // See PostProcess.hs: checkTyClHdr for checks and post-processing.
@@ -105,7 +127,7 @@ struct ClassDecl: public Object
     std::vector<expression_ref> type_vars;
     Context context;
 
-    std::optional<Located<expression_ref>> decls;
+    std::optional<Located<Decls>> decls;
     // std::vector<Located<expression_ref>> signatures;
     // std::vector<Located<expression_ref>> default_decls;
 
@@ -113,7 +135,7 @@ struct ClassDecl: public Object
     ClassDecl(const std::string& s,
               const std::vector<expression_ref>& as,
               const Context& ct,
-              const std::optional<Located<expression_ref>>& ds)
+              const std::optional<Located<Decls>>& ds)
         :name(s),
          type_vars(as),
          context(ct),
@@ -127,12 +149,12 @@ struct InstanceDecl: public Object
 
     // This should be something like Eq a => Eq [a]
     Located<expression_ref> type;
-    std::optional<Located<expression_ref>> decls;
+    std::optional<Located<Decls>> decls;
 
     InstanceDecl* clone() const { return new InstanceDecl(*this);}
 
     InstanceDecl(const Located<expression_ref>& t,
-                 const std::optional<Located<expression_ref>>& d)
+                 const std::optional<Located<Decls>>& d)
         :type(t),
          decls(d)
         {}
@@ -251,10 +273,10 @@ struct Stmts: public Object
 
 struct LetQual: public Object
 {
-    Located<expression_ref> binds;
+    Located<Decls> binds;
     LetQual* clone() const { return new LetQual(*this);}
     std::string print()  const;
-    LetQual(const Located<expression_ref>& b): binds(b) {}
+    LetQual(const Located<Decls>& b): binds(b) {}
 };
 
 struct SimpleQual: public Object
@@ -479,26 +501,26 @@ struct GuardedRHS
 struct MultiGuardedRHS: public Object
 {
     std::vector<GuardedRHS> guarded_rhss;
-    std::optional<Located<expression_ref>> decls;
+    std::optional<Located<Decls>> decls;
 
     MultiGuardedRHS* clone() const { return new MultiGuardedRHS(*this);}
     std::string print() const;
 
     MultiGuardedRHS(const std::vector<GuardedRHS>& v):guarded_rhss(v) {}
-    MultiGuardedRHS(const std::vector<GuardedRHS>& v, const std::optional<Located<expression_ref>>& ds):guarded_rhss(v), decls(ds) {}
+    MultiGuardedRHS(const std::vector<GuardedRHS>& v, const std::optional<Located<Decls>>& ds):guarded_rhss(v), decls(ds) {}
 };
 
 
 struct SimpleRHS: public Object
 {
     Located<expression_ref> body;
-    std::optional<Located<expression_ref>> decls;
+    std::optional<Located<Decls>> decls;
 
     SimpleRHS* clone() const { return new SimpleRHS(*this);}
     std::string print() const;
 
     SimpleRHS(const Located<expression_ref>& b): body(b) {}
-    SimpleRHS(const Located<expression_ref>& b, const std::optional<Located<expression_ref>>& ds): body(b), decls(ds) {}
+    SimpleRHS(const Located<expression_ref>& b, const std::optional<Located<Decls>>& ds): body(b), decls(ds) {}
 };
 
 struct LambdaExp: public Object
@@ -515,13 +537,13 @@ struct LambdaExp: public Object
 
 struct LetExp: public Object
 {
-    Located<expression_ref> decls;
+    Located<Decls> decls;
     Located<expression_ref> body;
 
     LetExp* clone() const {return new LetExp(*this);}
     std::string print() const;
 
-    LetExp(const Located<expression_ref>& d, const Located<expression_ref>& b): decls(d), body(b) {};
+    LetExp(const Located<Decls>& d, const Located<expression_ref>& b): decls(d), body(b) {};
 };
 
 

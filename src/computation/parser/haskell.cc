@@ -7,6 +7,20 @@ using std::vector;
 namespace Haskell
 {
 
+string Decls::print() const
+{
+    vector<expression_ref> decl_string;
+    for(auto& decl: *this)
+        decl_string.push_back( decl.print() );
+
+    return "{"+join( decl_string, "\n;" ) + "\n}";
+}
+
+string TopDecls::print() const
+{
+    return Decls::print();
+}
+
 string List::print() const
 {
     vector<string> parts;
@@ -246,11 +260,7 @@ string LambdaExp::print() const
 
 string LetExp::print() const
 {
-    vector<expression_ref> decl_string;
-    for(auto& decl: unloc(decls).sub())
-        decl_string.push_back( decl.print() );
-
-    return "let { " + join( decl_string, "; " ) + " } in " + body.print();
+    return "let " + unloc(decls).print() + " in " + body.print();
 }
 
 

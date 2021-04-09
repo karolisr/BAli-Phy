@@ -102,7 +102,7 @@ public:
     expression_ref impdecls;
     expression_ref exports;
 
-    expression_ref topdecls;
+    std::optional<Haskell::TopDecls> topdecls;
 
     std::vector<std::vector<expression_ref>> class_and_type_decls;
 
@@ -154,7 +154,7 @@ public:
 
     void declare_fixities();
 
-    void declare_fixities(const expression_ref& decls);
+    void declare_fixities(const Haskell::Decls& decls);
 
     void add_local_symbols();
 

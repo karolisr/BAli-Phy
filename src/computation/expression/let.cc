@@ -54,23 +54,6 @@ expression_ref make_decls(const CDecls& decls)
 }
 
 
-expression_ref make_topdecls(const CDecls& decls)
-{
-    if (decls.empty()) return {};
-
-    object_ptr<expression> Decls = new expression(AST_node("TopDecls"));
-    for(auto& decl: decls)
-    {
-	object_ptr<expression> Decl = new expression(AST_node("Decl"));
-	Decl->sub.push_back(decl.first);
-	assert(decl.second);
-	Decl->sub.push_back(decl.second);
-	Decls->sub.push_back(Decl);
-    }
-    return Decls;
-}
-
-
 expression_ref let_expression(const CDecls& decls, const expression_ref& T)
 {
     if (decls.size() == 0) return T;
