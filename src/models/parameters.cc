@@ -1875,7 +1875,27 @@ Parameters::Parameters(const Program& prog,
     {
         int r = sequences.get_reg();
 
-        int s = memory()->out_edges_to_var.at(r);
+        int s_sequences = memory()->out_edges_to_var.at(r);
+        auto& properties = memory()->dist_properties.at(s_sequences);
+        auto& in_edges = memory()->in_edges_to_dist.at(s_sequences);
+
+        optional<int> alignment;
+        optional<int> s_alignment;
+        if (in_edges.count("alignment"))
+        {
+            alignment = in_edges.at("alignment");
+            s_alignment = memory()->out_edges_to_var.at(*alignment);
+            auto& A_in_edges = memory()->in_edges_to_dist.at(*s_alignment);
+            int r_hmms = A_in_edges.at("hmms");
+        }
+
+        int smodel = memory()->in_edges_to_dist.at(s_sequences).at("smodel");
+        int tree = memory()->in_edges_to_dist.at(s_sequences).at("tree");
+
+        int cls = memory()->dist_properties.at(s_sequences).at("cond_likes");
+        int anc = memory()->dist_properties.at(s_sequences).at("anc_seqs");
+        int transition_ps = memory()->dist_properties.at(s_sequences).at("transition_ps");
+        int r_subst_root = memory()->dist_properties.at(s_sequences).at("transition_ps");
     }
 
     /* ---------------- compress alignments -------------------------- */
