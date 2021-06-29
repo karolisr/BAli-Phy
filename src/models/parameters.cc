@@ -446,7 +446,7 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
     auto imodel_index = p->imodel_index_for_partition(i);
 
     // R1. Add method indices for calculating transition matrices.
-    expression_ref transition_ps = reg_var(p->transition_ps_for_partition[i]);
+    expression_ref transition_ps = reg_var(p->transition_ps_for_partition(i));
     for(int b=0;b<B;b++)
         transition_p_method_indices.push_back( p->add_compute_expression( {var("Data.Array.!"), transition_ps, b} ) );
 
@@ -512,11 +512,11 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
         }
     }
 
-    cl_index = reg_var(p->cond_likes_for_partition[i]);
+    cl_index = reg_var(p->cond_likes_for_partition(i));
 
-    likelihood_index = reg_var(p->likelihood_for_partition[i]);
+    likelihood_index = reg_var(p->likelihood_for_partition(i));
 
-    ancestral_sequences_index = reg_var(p->anc_seqs_for_partition[i]);
+    ancestral_sequences_index = reg_var(p->anc_seqs_for_partition(i));
 
     for(int b=0;b<conditional_likelihoods_for_branch.size();b++)
         conditional_likelihoods_for_branch[b] = p->add_compute_expression({var("Data.Array.!"),cl_index.ref(*p),b});
@@ -1114,28 +1114,39 @@ expression_ref Parameters::my_atmodel_export() const
     return PC->atmodel_export.ref(*this);
 }
 
-expression_ref Parameters::my_partition_likelihoods() const
+reg_var Parameters::likelihood_for_partition(int i) const
 {
     assert(PC);
-    return PC->partition_likelihoods.ref(*this);
+    return reg_var(PC->likelihood_for_partition[i]);
 }
 
-expression_ref Parameters::my_partition_cond_likes() const
+reg_var Parameters::cond_likes_for_partition(int i) const
 {
     assert(PC);
-    return PC->partition_cond_likes.ref(*this);
+    return reg_var(PC->cond_likes_for_partition[i]);
 }
 
-expression_ref Parameters::my_partition_ancestral_sequences() const
+reg_var Parameters::transition_ps_for_partition(int i) const
 {
     assert(PC);
-    return PC->partition_ancestral_seqs.ref(*this);
+    return reg_var(PC->transition_ps_for_partition[i]);
 }
 
-expression_ref Parameters::my_subst_root() const
+reg_var Parameters::anc_seqs_for_partition(int i) const
 {
     assert(PC);
-    return PC->subst_root.ref(*this);
+    return reg_var(PC->anc_seqs_for_partition[i]);
+}
+
+reg_var Parameters::subst_root_for_partition(int i) const
+{
+    assert(PC);
+    return reg_var(PC->subst_root_for_partition[i]);
+}
+
+reg_var Parameters::my_subst_root() const
+{
+    return subst_root_for_partition(0);
 }
 
 int num_distinct(const vector<optional<int>>& v)
@@ -1886,11 +1897,11 @@ Parameters::Parameters(const Program& prog,
         int smodel = memory()->in_edges_to_dist.at(s_sequences).at("smodel");
         int tree = memory()->in_edges_to_dist.at(s_sequences).at("tree");
 
-        anc_seqs_for_partition.push_back( properties.at("anc_seqs") );
-        cond_likes_for_partition.push_back( properties.at("cond_likes") );
-        transition_ps_for_partition.push_back( properties.at("transition_ps") );
-        likelihood_for_partition.push_back( properties.at("likelihood") );
-        int r_subst_root = properties.at("transition_ps");
+        PC->anc_seqs_for_partition.push_back( properties.at("anc_seqs") );
+        PC->cond_likes_for_partition.push_back( properties.at("cond_likes") );
+        PC->transition_ps_for_partition.push_back( properties.at("transition_ps") );
+        PC->likelihood_for_partition.push_back( properties.at("likelihood") );
+        PC->subst_root_for_partition.push_back( properties.at("subst_root") );
     }
 
     /* ---------------- compress alignments -------------------------- */
@@ -1913,11 +1924,6 @@ Parameters::Parameters(const Program& prog,
     branches_from_affected_node.resize(ttt.n_nodes());
 
     PC->atmodel = add_compute_expression({var("BAliPhy.ATModel.get_atmodel"), my_atmodel_export()});
-
-    PC->partition_transition_ps = add_compute_expression({var("BAliPhy.ATModel.get_all_transition_ps"),my_atmodel_export()});
-    PC->partition_cond_likes = add_compute_expression({var("BAliPhy.ATModel.get_all_cond_likes"),my_atmodel_export()});
-    PC->partition_likelihoods = add_compute_expression({var("BAliPhy.ATModel.get_all_likelihoods"),my_atmodel_export()});
-    PC->partition_ancestral_seqs = add_compute_expression({var("BAliPhy.ATModel.get_all_ancestral_sequences"),my_atmodel_export()});
 
     // 1. Get the leaf labels out of the machine.  These should be based on the leaf sequences alignment for partition 1.
     // FIXME, if partition 1 has ancestral sequences, we will do the wrong thing here, even if we pass in a tree.
@@ -1954,7 +1960,7 @@ Parameters::Parameters(const Program& prog,
     // 4. We need to do this so that we can compute the likelihood of specified trees.
     t().read_tree(tt);
 
-    PC->subst_root         = get_param(*this, evaluate_expression({var("Parameters.maybe_modifiable_structure"),{var("BAliPhy.ATModel.subst_root"), my_atmodel_export()}}));
+    PC->subst_root         = subst_root_for_partition(0);
 
     /* --------------------------------------------------------------- */
 

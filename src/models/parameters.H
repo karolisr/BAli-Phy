@@ -218,11 +218,14 @@ struct parameters_constants: public Object
     param subst_root;
     param atmodel_export;
     param atmodel;
-    param partition_likelihoods;
-    param partition_cond_likes;
-    param partition_ancestral_seqs;
-    param partition_transition_ps;
     param sequence_names;
+
+    // Regs for various partition properties.
+    std::vector<int> likelihood_for_partition;
+    std::vector<int> cond_likes_for_partition;
+    std::vector<int> transition_ps_for_partition;
+    std::vector<int> anc_seqs_for_partition;
+    std::vector<int> subst_root_for_partition;
 
     std::vector<param> branch_categories;
 
@@ -355,26 +358,24 @@ public:
     /// Set branch 'b' to have length 'l', and compute the transition matrices
     void setlength_unsafe(int b, double l);
     void setlength(int b,double l); 
-  
+
     // void
     expression_ref my_tree() const;
     // void
     expression_ref my_atmodel() const;
     expression_ref my_atmodel_export() const;
 
-    expression_ref my_partition_likelihoods() const;
-    expression_ref my_partition_cond_likes() const;
-    std::vector<int> likelihood_for_partition;
-    std::vector<int> cond_likes_for_partition;
-    std::vector<int> transition_ps_for_partition;
-    std::vector<int> anc_seqs_for_partition;
-    expression_ref my_partition_ancestral_sequences() const;
+    reg_var likelihood_for_partition(int i) const;
+    reg_var cond_likes_for_partition(int i) const;
+    reg_var transition_ps_for_partition(int i) const;
+    reg_var anc_seqs_for_partition(int i) const;
+    reg_var subst_root_for_partition(int i) const;
 
     // bool
     bool variable_alignment() const;
 
     // int
-    expression_ref my_subst_root() const;
+    reg_var my_subst_root() const;
     void select_root(int b) const;
     void set_root_(int n) const;
     void set_root(int n) const;
