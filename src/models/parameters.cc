@@ -514,7 +514,7 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
 
     cl_index = reg_var(p->cond_likes_for_partition[i]);
 
-    likelihood_index = p->add_compute_expression({var("Data.List.!!"),p->my_partition_likelihoods(),i});
+    likelihood_index = reg_var(p->likelihood_for_partition[i]);
 
     ancestral_sequences_index = p->add_compute_expression({var("Data.List.!!"),p->my_partition_ancestral_sequences(),i});
 
@@ -1889,6 +1889,7 @@ Parameters::Parameters(const Program& prog,
         int anc = properties.at("anc_seqs");
         cond_likes_for_partition.push_back( properties.at("cond_likes") );
         transition_ps_for_partition.push_back( properties.at("transition_ps") );
+        likelihood_for_partition.push_back( properties.at("likelihood") );
         int r_subst_root = properties.at("transition_ps");
     }
 

@@ -364,6 +364,7 @@ public:
 
     expression_ref my_partition_likelihoods() const;
     expression_ref my_partition_cond_likes() const;
+    std::vector<int> likelihood_for_partition;
     std::vector<int> cond_likes_for_partition;
     std::vector<int> transition_ps_for_partition;
     expression_ref my_partition_ancestral_sequences() const;
