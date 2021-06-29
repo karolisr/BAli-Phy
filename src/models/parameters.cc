@@ -446,7 +446,7 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
     auto imodel_index = p->imodel_index_for_partition(i);
 
     // R1. Add method indices for calculating transition matrices.
-    expression_ref transition_ps = {var("Data.List.!!"),p->my_partition_transition_ps(),i};
+    expression_ref transition_ps = reg_var(p->transition_ps_for_partition[i]);
     for(int b=0;b<B;b++)
         transition_p_method_indices.push_back( p->add_compute_expression( {var("Data.Array.!"), transition_ps, b} ) );
 
@@ -1130,12 +1130,6 @@ expression_ref Parameters::my_partition_ancestral_sequences() const
 {
     assert(PC);
     return PC->partition_ancestral_seqs.ref(*this);
-}
-
-expression_ref Parameters::my_partition_transition_ps() const
-{
-    assert(PC);
-    return PC->partition_transition_ps.ref(*this);
 }
 
 expression_ref Parameters::my_subst_root() const
@@ -1892,10 +1886,10 @@ Parameters::Parameters(const Program& prog,
         int smodel = memory()->in_edges_to_dist.at(s_sequences).at("smodel");
         int tree = memory()->in_edges_to_dist.at(s_sequences).at("tree");
 
-        int cls = memory()->dist_properties.at(s_sequences).at("cond_likes");
-        int anc = memory()->dist_properties.at(s_sequences).at("anc_seqs");
-        int transition_ps = memory()->dist_properties.at(s_sequences).at("transition_ps");
-        int r_subst_root = memory()->dist_properties.at(s_sequences).at("transition_ps");
+        int cls = properties.at("cond_likes");
+        int anc = properties.at("anc_seqs");
+        transition_ps_for_partition.push_back( properties.at("transition_ps") );
+        int r_subst_root = properties.at("transition_ps");
     }
 
     /* ---------------- compress alignments -------------------------- */
