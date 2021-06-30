@@ -1757,35 +1757,12 @@ std::string generate_atmodel_program(int n_sequences,
     }
     program.empty_stmt();
 
-    vector<expression_ref> transition_ps;
-    vector<expression_ref> cond_likes;
-    vector<expression_ref> anc_seqs;
-    vector<expression_ref> likelihoods;
-    for(int i=0; i < n_partitions; i++)
-    {
-        string part = std::to_string(i+1);
-        transition_ps.push_back(var("transition_ps_part"+part));
-        cond_likes.push_back(var("cls_part"+part));
-        anc_seqs.push_back(var("ancestral_sequences_part"+part));
-        likelihoods.push_back(var("likelihood_part"+part));
-    }
-
-    program.let(var("transition_ps"),get_list(transition_ps));
-    program.let(var("cond_likes"),get_list(cond_likes));
-    program.let(var("anc_seqs"),get_list(anc_seqs));
-    program.let(var("likelihoods"),get_list(likelihoods));
-    program.empty_stmt();
     program.finish_return(
         Tuple(
             Tuple(
                 {var("ATModelExport"),
                  var("atmodel"),
-                 var("transition_ps"),
-                 var("cond_likes"),
-                 var("anc_seqs"),
-                 var("likelihoods"),
                  sequence_data_var,
-                 subst_root_var,
                  taxon_names_var},
                 var("sequence_data")),
             var("loggers")
