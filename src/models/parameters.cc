@@ -161,7 +161,7 @@ double data_partition::get_beta() const
 }
 
 int data_partition::subst_root() const {
-    return P->subst_root();
+    return P->subst_root(partition_index);
 }
 
 bool data_partition::has_IModel() const
@@ -1033,7 +1033,8 @@ void Parameters::set_root_(int node) const
 {
     assert(not t().is_leaf_node(node));
     const context* C = this;
-    PC->subst_root.set_value(*const_cast<context*>(C), node);
+    for(int p=0;p<PC->subst_roots.size();p++)
+        PC->subst_roots[p].set_value(*const_cast<context*>(C), node);
 }
 
 void Parameters::set_root(int node) const
@@ -1043,9 +1044,14 @@ void Parameters::set_root(int node) const
     assert(subst_root() == node);
 }
 
+int Parameters::subst_root(int p) const
+{
+    return PC->subst_roots[p].get_value(*this).as_int();
+}
+
 int Parameters::subst_root() const
 {
-    return PC->subst_root.get_value(*this).as_int();
+    return subst_root(0);
 }
 
 int Parameters::get_branch_category(int b) const
@@ -1144,9 +1150,9 @@ reg_var Parameters::subst_root_for_partition(int i) const
     return reg_var(PC->subst_root_for_partition[i]);
 }
 
-reg_var Parameters::my_subst_root() const
+reg_var Parameters::my_subst_root(int p) const
 {
-    return subst_root_for_partition(0);
+    return subst_root_for_partition(p);
 }
 
 int num_distinct(const vector<optional<int>>& v)
@@ -1926,7 +1932,8 @@ Parameters::Parameters(const Program& prog,
     // 4. We need to do this so that we can compute the likelihood of specified trees.
     t().read_tree(tt);
 
-    PC->subst_root         = subst_root_for_partition(0);
+    for(auto& rvar: PC->subst_root_for_partition)
+        PC->subst_roots.push_back(reg_var(rvar));
 
     /* --------------------------------------------------------------- */
 

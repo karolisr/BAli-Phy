@@ -215,7 +215,7 @@ struct smodel_methods
 
 struct parameters_constants: public Object
 {
-    param subst_root;
+    std::vector<param> subst_roots;
     param atmodel_export;
     param atmodel;
     param sequence_names;
@@ -375,10 +375,11 @@ public:
     bool variable_alignment() const;
 
     // int
-    reg_var my_subst_root() const;
+    reg_var my_subst_root(int p) const;
     void select_root(int b) const;
     void set_root_(int n) const;
     void set_root(int n) const;
+    int subst_root(int p) const;
     int subst_root() const;
 
     // int
