@@ -1867,7 +1867,10 @@ Parameters::Parameters(const Program& prog,
             alignment = in_edges.at("alignment");
             s_alignment = *memory()->out_edges_to_var.at(*alignment).begin();
             auto& A_in_edges = memory()->in_edges_to_dist.at(*s_alignment);
-            int r_hmms = A_in_edges.at("hmms");
+            if (A_in_edges.count("hmms"))
+            {
+                int r_hmms = A_in_edges.at("hmms");
+            }
         }
 
         int smodel = memory()->in_edges_to_dist.at(s_sequences).at("smodel");
