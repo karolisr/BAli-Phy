@@ -1381,7 +1381,7 @@ std::string generate_atmodel_program(int n_sequences,
     int n_partitions = filename_ranges.size();
 
     int n_leaves   = n_sequences;
-    int n_nodes    = (n_leaves==1)?1:2*n_leaves - 2;
+//    int n_nodes    = (n_leaves==1)?1:2*n_leaves - 2;
     int n_branches = (n_leaves==1)?0:2*n_leaves - 3;
 
     set<string> imports;
@@ -1852,7 +1852,11 @@ Parameters::Parameters(const Program& prog,
     {
         int r = sequences.get_reg();
 
-        int s_sequences = memory()->out_edges_to_var.at(r);
+        auto& to_var = memory()->out_edges_to_var.at(r);
+        if (to_var.size() > 1)
+            throw myexception()<<"Some partitions are identical!";
+
+        int s_sequences = *to_var.begin();
         auto& properties = memory()->dist_properties.at(s_sequences);
         auto& in_edges = memory()->in_edges_to_dist.at(s_sequences);
 
@@ -1861,7 +1865,7 @@ Parameters::Parameters(const Program& prog,
         if (in_edges.count("alignment"))
         {
             alignment = in_edges.at("alignment");
-            s_alignment = memory()->out_edges_to_var.at(*alignment);
+            s_alignment = *memory()->out_edges_to_var.at(*alignment).begin();
             auto& A_in_edges = memory()->in_edges_to_dist.at(*s_alignment);
             int r_hmms = A_in_edges.at("hmms");
         }
