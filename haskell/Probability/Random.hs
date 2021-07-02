@@ -146,15 +146,23 @@ run_lazy' rate (IOReturn v) = return v
 run_lazy' rate dist@(Distribution _ _ _ (RandomStructure tk_effect structure do_sample) range) = do 
  -- Note: unsafeInterleaveIO means that we will only execute this line if `value` is accessed.
   value <- unsafeInterleaveIO $ run_lazy do_sample
-  let (raw_x,triggered_x) = structure value do_effects
-      effect = do
-        run_tk_effects rate $ tk_effect raw_x
+ -- Note: We still have an unsafeInterleaveIO because we need a value that we can `seq` to form triggered_x.
+ --       We could construct triggered_x after effects inner, if we separate it from raw_x.
+ --       Without doing that, maybe we could use a `rec` block...
+  let (raw_x,triggered_x) = structure value effects_inner
+      -- This is triggered when we access the STRUCTURE.
+      -- It creates the factor graph nodes, except for the out-edge.
+      (s,density_terms) = unsafePerformIO $ do
         s <- register_dist_sample (dist_name dist)
         density_terms <- make_edges s $ annotated_densities dist raw_x
+        return (s,density_terms)
+      -- This is triggered when we access a MODIFIABLE.
+      -- It registers transition kernels and prior terms.
+      effects_inner = unsafePerformIO $ do
+        run_tk_effects rate $ tk_effect raw_x
         sequence_ [register_prior s term | term <- density_terms]
-        register_out_edge s raw_x
-      do_effects = unsafePerformIO effect
-  return triggered_x
+  register_out_edge s triggered_x
+
 run_lazy' rate (Distribution _ _ _ s _) = run_lazy' rate s
 run_lazy' rate (MFix f) = MFix ((run_lazy' rate).f)
 run_lazy' rate (SamplingRate rate2 a) = run_lazy' (rate*rate2) a
