@@ -1390,7 +1390,7 @@ std::string generate_atmodel_program(int n_sequences,
     imports.insert("Bio.Alphabet");                          // for Bio.Alphabet.dna, etc.
     imports.insert("BAliPhy.ATModel");                   // for ATModel
     imports.insert("BAliPhy.ATModel.DataPartition");     // for Partition
-    imports.insert("Probability.Distribution.FakeDist");// for fake_dist_0 and fake_dist_1
+    imports.insert("Probability.Distribution.OnTree");   // for ctmc_on_tree and ctmc_on_tree_fixed_A
     for(auto& m: SMs)
         add(imports, m.imports);
     for(auto& m: IMs)
@@ -1738,14 +1738,14 @@ std::string generate_atmodel_program(int n_sequences,
         expression_ref sequence_data_var = {var("!!"),var("sequence_data"),i};
         if (likelihood_calculator == 0)
         {
-            program.perform({var("~>"),sequence_data_var,{var("fake_dist_0"),tree, alignment, smodel}});
+            program.perform({var("~>"),sequence_data_var,{var("ctmc_on_tree"), tree, alignment, smodel}});
         }
         else if (likelihood_calculator == 1)
         {
             assert(not i_mapping[i]);
             assert(likelihood_calculator == 1);
 
-            program.perform({var("~>"),sequence_data_var,{var("fake_dist_1"),tree, smodel}});
+            program.perform({var("~>"),sequence_data_var,{var("ctmc_on_tree_fixed_A"),tree, smodel}});
         }
         else
             std::abort();
