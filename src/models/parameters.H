@@ -221,12 +221,6 @@ struct parameters_constants: public Object
     param atmodel;
     param sequence_names;
 
-    // Regs for various partition properties.
-    std::vector<int> likelihood_for_partition;
-    std::vector<int> cond_likes_for_partition;
-    std::vector<int> transition_ps_for_partition;
-    std::vector<int> anc_seqs_for_partition;
-
     std::vector<param> branch_categories;
 
     /// The substitution::Model
@@ -364,11 +358,6 @@ public:
     // void
     expression_ref my_atmodel() const;
     expression_ref my_atmodel_export() const;
-
-    reg_var likelihood_for_partition(int i) const;
-    reg_var cond_likes_for_partition(int i) const;
-    reg_var transition_ps_for_partition(int i) const;
-    reg_var anc_seqs_for_partition(int i) const;
 
     // bool
     bool variable_alignment() const;

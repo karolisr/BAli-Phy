@@ -446,10 +446,6 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
     auto imodel_index = p->imodel_index_for_partition(i);
 
     // R1. Add method indices for calculating transition matrices.
-    expression_ref transition_ps = reg_var(p->transition_ps_for_partition(i));
-    for(int b=0;b<B;b++)
-        transition_p_method_indices.push_back( p->add_compute_expression( {var("Data.Array.!"), transition_ps, b} ) );
-
     if (like_calc == 0)
     {
         // Can we extract the "leaf_sequences" intermediate value from (leaf_sequences atmodel_export!!i)?
@@ -518,18 +514,21 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
 
     int s_sequences = *to_var->begin();
     auto properties = p->dist_properties(s_sequences);
-    int r_subst_root = properties->at("subst_root");
-    subst_root = reg_var(r_subst_root);
 
-    cl_index = reg_var(p->cond_likes_for_partition(i));
+    subst_root = reg_var( properties->at("subst_root") );
 
-    likelihood_index = reg_var(p->likelihood_for_partition(i));
+    cl_index = reg_var( properties->at("cond_likes") );
 
-    ancestral_sequences_index = reg_var(p->anc_seqs_for_partition(i));
+    likelihood_index = reg_var( properties->at("likelihood") );
+
+    ancestral_sequences_index = reg_var( properties->at("anc_seqs") );
+
+    expression_ref transition_ps = reg_var( properties->at("transition_ps") );
+    for(int b=0;b<B;b++)
+        transition_p_method_indices.push_back( p->add_compute_expression( {var("Data.Array.!"), transition_ps, b} ) );
 
     for(int b=0;b<conditional_likelihoods_for_branch.size();b++)
         conditional_likelihoods_for_branch[b] = p->add_compute_expression({var("Data.Array.!"),cl_index.ref(*p),b});
-
 }
 
 //-----------------------------------------------------------------------------//
@@ -1127,30 +1126,6 @@ expression_ref Parameters::my_atmodel_export() const
 {
     assert(PC);
     return PC->atmodel_export.ref(*this);
-}
-
-reg_var Parameters::likelihood_for_partition(int i) const
-{
-    assert(PC);
-    return reg_var(PC->likelihood_for_partition[i]);
-}
-
-reg_var Parameters::cond_likes_for_partition(int i) const
-{
-    assert(PC);
-    return reg_var(PC->cond_likes_for_partition[i]);
-}
-
-reg_var Parameters::transition_ps_for_partition(int i) const
-{
-    assert(PC);
-    return reg_var(PC->transition_ps_for_partition[i]);
-}
-
-reg_var Parameters::anc_seqs_for_partition(int i) const
-{
-    assert(PC);
-    return reg_var(PC->anc_seqs_for_partition[i]);
 }
 
 int num_distinct(const vector<optional<int>>& v)
@@ -1873,11 +1848,6 @@ Parameters::Parameters(const Program& prog,
 
         int smodel = memory()->in_edges_to_dist.at(s_sequences).at("smodel");
         int tree = memory()->in_edges_to_dist.at(s_sequences).at("tree");
-
-        PC->anc_seqs_for_partition.push_back( properties.at("anc_seqs") );
-        PC->cond_likes_for_partition.push_back( properties.at("cond_likes") );
-        PC->transition_ps_for_partition.push_back( properties.at("transition_ps") );
-        PC->likelihood_for_partition.push_back( properties.at("likelihood") );
     }
 
     /* ---------------- compress alignments -------------------------- */
