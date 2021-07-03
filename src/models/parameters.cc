@@ -410,7 +410,7 @@ EVector unaligned_alignments_on_tree(const Tree& t, const vector<vector<int>>& s
     return alignments;
 }
 
-data_partition_constants::data_partition_constants(Parameters* p, int i, const alphabet& a_, int like_calc)
+data_partition_constants::data_partition_constants(Parameters* p, int i, const alphabet& a_, int like_calc, int r_data)
     :conditional_likelihoods_for_branch(2*p->t().n_branches()),
      sequence_length_indices(p->t().n_nodes()),
      sequence_length_pr_indices(p->t().n_nodes()),
@@ -511,6 +511,15 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
             alignment_prior_index = p->add_compute_expression( {var("Probability.Distribution.RandomAlignment.alignment_pr"), alignment_on_tree, hmms.ref(*p), model} );
         }
     }
+
+    auto to_var = p->out_edges_to_var(r_data);
+    if (to_var->size() > 1)
+        throw myexception()<<"Some partitions are identical!";
+
+    int s_sequences = *to_var->begin();
+    auto properties = p->dist_properties(s_sequences);
+    int r_subst_root = properties->at("subst_root");
+    subst_root = reg_var(r_subst_root);
 
     cl_index = reg_var(p->cond_likes_for_partition(i));
 
@@ -1033,8 +1042,8 @@ void Parameters::set_root_(int node) const
 {
     assert(not t().is_leaf_node(node));
     const context* C = this;
-    for(int p=0;p<PC->subst_roots.size();p++)
-        PC->subst_roots[p].set_value(*const_cast<context*>(C), node);
+    for(int p=0;p<n_data_partitions();p++)
+        PC->DPC[p].subst_root.set_value(*const_cast<context*>(C), node);
 }
 
 void Parameters::set_root(int node) const
@@ -1046,7 +1055,7 @@ void Parameters::set_root(int node) const
 
 int Parameters::subst_root(int p) const
 {
-    return PC->subst_roots[p].get_value(*this).as_int();
+    return PC->DPC[p].subst_root.get_value(*this).as_int();
 }
 
 int Parameters::subst_root() const
@@ -1142,17 +1151,6 @@ reg_var Parameters::anc_seqs_for_partition(int i) const
 {
     assert(PC);
     return reg_var(PC->anc_seqs_for_partition[i]);
-}
-
-reg_var Parameters::subst_root_for_partition(int i) const
-{
-    assert(PC);
-    return reg_var(PC->subst_root_for_partition[i]);
-}
-
-reg_var Parameters::my_subst_root(int p) const
-{
-    return subst_root_for_partition(p);
 }
 
 int num_distinct(const vector<optional<int>>& v)
@@ -1880,7 +1878,6 @@ Parameters::Parameters(const Program& prog,
         PC->cond_likes_for_partition.push_back( properties.at("cond_likes") );
         PC->transition_ps_for_partition.push_back( properties.at("transition_ps") );
         PC->likelihood_for_partition.push_back( properties.at("likelihood") );
-        PC->subst_root_for_partition.push_back( properties.at("subst_root") );
     }
 
     /* ---------------- compress alignments -------------------------- */
@@ -1939,9 +1936,6 @@ Parameters::Parameters(const Program& prog,
     // 4. We need to do this so that we can compute the likelihood of specified trees.
     t().read_tree(tt);
 
-    for(auto& rvar: PC->subst_root_for_partition)
-        PC->subst_roots.push_back(reg_var(rvar));
-
     /* --------------------------------------------------------------- */
 
     param scales_list = add_compute_expression( {var("BAliPhy.ATModel.scales"),my_atmodel()} );
@@ -1983,14 +1977,14 @@ Parameters::Parameters(const Program& prog,
         {
             // construct compressed alignment, counts, and mapping
             auto& [AA, counts, mapping] = *compressed_alignments[i];
-            PC->DPC.emplace_back(this, i, AA.get_alphabet(), like_calcs[i]);
+            PC->DPC.emplace_back(this, i, AA.get_alphabet(), like_calcs[i], sequence_data[i].get_reg());
             if (like_calcs[i] == 0)
                 get_data_partition(i).set_alignment(AA);
         }
         else
         {
             auto counts = vector<int>(A[i].length(), 1);
-            PC->DPC.emplace_back(this, i, A[i].get_alphabet(), like_calcs[i]);
+            PC->DPC.emplace_back(this, i, A[i].get_alphabet(), like_calcs[i], sequence_data[i].get_reg());
             if (like_calcs[i] == 0)
                 get_data_partition(i).set_alignment(A[i]);
         }
