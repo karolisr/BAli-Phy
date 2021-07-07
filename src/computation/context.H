@@ -132,7 +132,6 @@ public:
     std::optional<int> out_edges_from_dist(int r) const;
     const std::set<int>* out_edges_to_var(int r) const;
     const std::map<std::string,int>* in_edges_to_dist(int r)  const;
-    const std::map<int,std::set<std::string>>* in_edges_from_var(int r)  const;
     const std::map<std::string,int>* dist_properties(int s) const;
 
 public:

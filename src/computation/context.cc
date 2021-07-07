@@ -469,16 +469,6 @@ const std::map<std::string,int>* context_ref::in_edges_to_dist(int r)  const
         return &(it->second);
 }
 
-const std::map<int,std::set<std::string>>* context_ref::in_edges_from_var(int r)  const
-{
-    auto& from_var = memory()->in_edges_from_var;
-    auto it = from_var.find(r);
-    if (it == from_var.end())
-        return nullptr;
-    else
-        return &(it->second);
-}
-
 const std::map<std::string,int>* context_ref::dist_properties(int s) const
 {
     auto& dist_properties = memory()->dist_properties;
