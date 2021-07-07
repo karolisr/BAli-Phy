@@ -429,21 +429,21 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
         throw myexception()<<"Some partitions are identical!";
 
     int s_sequences = *to_var->begin();
-    auto properties = p->dist_properties(s_sequences);
-    auto in_edges = p->in_edges_to_dist(s_sequences);
+    auto properties = *p->dist_properties(s_sequences);
+    auto in_edges = *p->in_edges_to_dist(s_sequences);
 
     // TODO: get the like_calc from the dist_type.
     // TODO: get the alphabet from the "alphabet" property.
 
-    subst_root = reg_var( properties->at("subst_root") );
+    subst_root = reg_var( *properties.get("subst_root") );
 
-    cl_index = reg_var( properties->at("cond_likes") );
+    cl_index = reg_var( *properties.get("cond_likes") );
 
-    likelihood_index = reg_var( properties->at("likelihood") );
+    likelihood_index = reg_var( *properties.get("likelihood") );
 
-    ancestral_sequences_index = reg_var( properties->at("anc_seqs") );
+    ancestral_sequences_index = reg_var( *properties.get("anc_seqs") );
 
-    expression_ref transition_ps = reg_var( properties->at("transition_ps") );
+    expression_ref transition_ps = reg_var( *properties.get("transition_ps") );
     for(int b=0;b<B;b++)
         transition_p_method_indices.push_back( p->add_compute_expression( {var("Data.Array.!"), transition_ps, b} ) );
 
@@ -472,7 +472,7 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
     // R1. Add method indices for calculating transition matrices.
     if (like_calc == 0)
     {
-        auto leaf_sequences = reg_var( properties->at( "leaf_sequences" ) );
+        auto leaf_sequences = reg_var( *properties.get( "leaf_sequences" ) );
         for(int i=0; i<p->t().n_leaves(); i++)
             leaf_sequence_indices.push_back( p->add_compute_expression({var("Data.Array.!"),leaf_sequences,i}) );
 
@@ -480,7 +480,7 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
             sequences.push_back( (vector<int>)(leaf_sequence_indices[i].get_value(*p).as_<EVector>()) );
 
         // Extract pairwise alignments from data partition
-        int r_alignment = in_edges->at("alignment");
+        int r_alignment = *in_edges.get("alignment");
         auto alignment_on_tree = reg_var( r_alignment );
 
         /* Initialize params -- from alignments.ref(*p) */
@@ -495,16 +495,16 @@ data_partition_constants::data_partition_constants(Parameters* p, int i, const a
 
         int s_alignment = *p->out_edges_to_var( r_alignment )->begin();
 
-        auto A_properties = p->dist_properties(s_alignment);
-        if (A_properties->count("hmms"))
+        auto A_properties = *p->dist_properties(s_alignment);
+        if (auto r_hmms = A_properties.get("hmms"))
         {
-            auto hmms = reg_var( A_properties->at("hmms") );
+            auto hmms = reg_var( *r_hmms );
             for(int b=0;b<B;b++)
                 branch_HMMs.push_back( p->add_compute_expression( {var("Data.Array.!"), hmms, b} ) );
 
-            alignment_prior_index = reg_var( A_properties->at("pr") );
+            alignment_prior_index = reg_var( *A_properties.get("pr") );
 
-            auto lengthp = reg_var( A_properties->at("lengthp") );
+            auto lengthp = reg_var( *A_properties.get("lengthp") );
             for(int n=0;n<sequence_length_pr_indices.size();n++)
             {
                 expression_ref l = sequence_length_indices[n].ref(*p);
@@ -1797,24 +1797,22 @@ Parameters::Parameters(const Program& prog,
     {
         int r = sequences.get_reg();
 
-        auto& to_var = memory()->out_edges_to_var.at(r);
+        auto to_var = memory()->out_edges_to_var.at(r);
         if (to_var.size() > 1)
             throw myexception()<<"Some partitions are identical!";
 
         int s_sequences = *to_var.begin();
-        auto& properties = memory()->dist_properties.at(s_sequences);
-        auto& in_edges = memory()->in_edges_to_dist.at(s_sequences);
+        auto properties = *dist_properties(s_sequences);
+        auto in_edges = *in_edges_to_dist(s_sequences);
 
         optional<int> alignment;
         optional<int> s_alignment;
-        if (in_edges.count("alignment"))
+        if (alignment = in_edges.get("alignment"))
         {
-            alignment = in_edges.at("alignment");
-            s_alignment = *memory()->out_edges_to_var.at(*alignment).begin();
-            auto& A_in_edges = memory()->in_edges_to_dist.at(*s_alignment);
-            if (A_in_edges.count("hmms"))
+            s_alignment = *out_edges_to_var(*alignment)->begin();
+            auto A_in_edges = *in_edges_to_dist(*s_alignment);
+            if (auto hmms = A_in_edges.get("hmms"))
             {
-                int r_hmms = A_in_edges.at("hmms");
             }
         }
 
