@@ -1384,6 +1384,7 @@ std::string generate_atmodel_program(int n_sequences,
     imports.insert("Bio.Alphabet");                          // for Bio.Alphabet.dna, etc.
     imports.insert("BAliPhy.ATModel");                   // for ATModel
     imports.insert("BAliPhy.ATModel.DataPartition");     // for Partition
+    imports.insert("Probability.Distribution.FakeDist");// for fake_dist_0 and fake_dist_1
     for(auto& m: SMs)
         add(imports, m.imports);
     for(auto& m: IMs)
@@ -1438,17 +1439,11 @@ std::string generate_atmodel_program(int n_sequences,
     do_block program;
 
     do_block sample_atmodel;
-    var subst_root_var("subst_root");
     var modifiable("Parameters.modifiable");
 
     // FIXME: We can't load the alignments to read their names until we know the alphabets!
     // FIXME: Can we load the alignments as SEQUENCES first?
     var taxon_names_var("taxa");
-
-    program.let({
-            {subst_root_var,         {modifiable, n_nodes-1}}
-        });
-    program.empty_stmt();
 
     // ATModel smodels imodels scales branch_lengths
     // Loggers = [(string,(Maybe a,Loggers)]
@@ -1737,20 +1732,14 @@ std::string generate_atmodel_program(int n_sequences,
         expression_ref sequence_data_var = {var("!!"),var("sequence_data"),i};
         if (likelihood_calculator == 0)
         {
-            program.let(Tuple(transition_ps, cls_var, ancestral_sequences_var, likelihood_var),
-                        {var("observe_partition_type_0"), tree, alignment, smodel, sequence_data_var, subst_root_var});
-
-            program.perform({var("~>"),sequence_data_var,{var("fake_dist_0"),tree, alignment, smodel, subst_root_var, transition_ps, cls_var, ancestral_sequences_var, likelihood_var}});
+            program.perform({var("~>"),sequence_data_var,{var("fake_dist_0"),tree, alignment, smodel}});
         }
         else if (likelihood_calculator == 1)
         {
             assert(not i_mapping[i]);
             assert(likelihood_calculator == 1);
 
-            program.let(Tuple(transition_ps, cls_var, ancestral_sequences_var, likelihood_var),
-                        {var("observe_partition_type_1"), tree, smodel,sequence_data_var, subst_root_var});
-
-            program.perform({var("~>"),sequence_data_var,{var("fake_dist_1"),tree, smodel, subst_root_var, transition_ps, cls_var, ancestral_sequences_var, likelihood_var}});
+            program.perform({var("~>"),sequence_data_var,{var("fake_dist_1"),tree, smodel}});
         }
         else
             std::abort();
